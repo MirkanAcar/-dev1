@@ -1,0 +1,71 @@
+import numpy as np
+import streamlit as st
+import plotly.express as px
+import pandas as pd
+from sklearn import datasets
+from sklearn.datasets import fetch_california_housing
+import urllib.request
+import ssl
+import plotly.graph_objects as go
+
+
+def regression_models(verbose: True):
+    cal_housing = fetch_california_housing()
+    X = pd.DataFrame(cal_housing.data, columns=cal_housing.feature_names)
+    y = cal_housing.target
+    st.dataframe(X)
+    df = pd.DataFrame( dict(MedInc=X['MedInc'], Price=cal_housing.target))
+
+    st.dataframe(df)
+    fig = px.scatter(df, x="MedInc", y="Price")
+    st.plotly_chart(fig, use_container_width=True)
+    alpha=0.000001
+    lam = st.slider("Regularization Multiplier for L1(lambda)", 0.001, 10., value=0.1)
+
+    beta = np.random.random(2)
+    st.write(beta)
+    st.write(df.MedInc.min())
+    st.write(df.MedInc.max())
+
+    lam1 = st.slider("Regularization Multiplier for L2 (lambda)", 0.001, 10., value=0.1)
+    beta = ls_l2(df['MedInc'].values, df['Price'].values, lam1)
+    st.latex(fr"\beta_0={beta[0]:.4f}, \beta_1={beta[1]:.4f}")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df.MedInc, y=y, mode='markers', name='data points'))
+    fig.add_trace(
+        go.Scatter(x=df.MedInc, y=beta[0] + beta[1] * df.MedInc, mode='lines', name='regression + L1  (Lambda = 1000)'))
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def ls_l2(x, y, lam, alpha=0.000001) -> np.ndarray:
+    print("starting sgd")
+    beta = np.random.random(2)
+
+    for i in range(1500):
+        y_pred: np.ndarray = beta[0] + beta[1] * x
+
+        g_b0 = -2 * (y - y_pred).sum() + 2 * lam * beta[0]
+        g_b1 = -2 * (x * (y - y_pred)).sum() + 2 * lam * beta[1]
+
+        print(f"({i}) beta: {beta}, gradient: {g_b0} {g_b1}")
+
+        beta_prev = np.copy(beta)
+
+        beta[0] = beta[0] - alpha * g_b0
+        beta[1] = beta[1] - alpha * g_b1
+
+        if np.linalg.norm(beta - beta_prev) < 0.0000001:
+            print(f"I do early stoping at iteration {i}")
+            break
+
+    return beta
+
+def main(verbose: bool = True):
+    regression_models(verbose)
+
+
+
+if __name__ == '__main__':
+    main(st.sidebar.checkbox("verbosity"))
